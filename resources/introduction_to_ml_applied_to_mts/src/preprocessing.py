@@ -136,7 +136,7 @@ class DataPreprocessor:
             return None
 
         # Extract numeric data and remove rows with NaN values
-        numeric_data = df[numeric_cols].dropna()
+        numeric_data = df[numeric_cols].fillna(0).dropna()
 
         if len(numeric_data) == 0:
             if df_index <= 5:
@@ -221,7 +221,7 @@ class DataPreprocessor:
 
         # Calculate value ranges and statistics
         for col in numeric_cols:
-            all_values = np.concatenate([df[col].dropna().values for df in scaled_dfs])
+            all_values = np.concatenate([df[col].fillna(0).dropna().values for df in scaled_dfs])
 
             stats["value_ranges"][col] = {
                 "min": float(np.min(all_values)),
@@ -271,7 +271,7 @@ class DataPreprocessor:
             if has_required_cols:
                 # Check if there's enough non-null data
                 if required_columns:
-                    df_clean = df[required_columns].dropna()
+                    df_clean = df[required_columns].fillna(0).dropna()
                 else:
                     df_clean = df.dropna()
 
@@ -317,7 +317,7 @@ class DataPreprocessor:
             raise ValueError("No numeric columns found for scaling")
 
         # Clean data
-        clean_data = data[numeric_cols].dropna()
+        clean_data = data[numeric_cols].fillna(0).dropna()
 
         if len(clean_data) == 0:
             raise ValueError("No valid data after removing NaN values")
@@ -361,7 +361,7 @@ class DataPreprocessor:
         }
 
         for col in numeric_cols:
-            col_data = scaled_df[col].dropna()
+            col_data = scaled_df[col].fillna(0).dropna()
 
             if method == "minmax":
                 # MinMax should be in range [0, 1]

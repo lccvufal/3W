@@ -10,7 +10,7 @@ Parameter Ranges and Validation:
 """
 
 # Dataset settings
-TARGET_FEATURES = ["P-PDG", "P-TPT", "T-TPT", "class"]
+TARGET_FEATURES = ["P-PDG", "T-PDG", "P-TPT", "T-TPT", "class"]
 CLASS_COLUMN = "class"
 MAX_FILES_PER_CLASS = (
     50  # Range: 50-500, Maximum files to load per class (memory optimization)
@@ -43,7 +43,7 @@ WINDOW_STRIDE = (
 MIN_WINDOW_SIZE = 300  # Range: 50 to WINDOW_SIZE, Only keep full-size windows
 
 # Data analysis settings
-SAMPLE_ANALYSIS_MIN_SAMPLES = 100
+SAMPLE_ANALYSIS_MIN_SAMPLES = 50
 REQUIRED_COLUMNS = TARGET_FEATURES
 
 # Sensor column names for plotting

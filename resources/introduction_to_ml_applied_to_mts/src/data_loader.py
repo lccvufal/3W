@@ -321,7 +321,7 @@ class DataLoader:
             return None
 
         # Remove rows with missing class labels
-        df = df.dropna(subset=["class"]).reset_index(drop=True)
+        df = df.fillna(0).dropna(subset=["class"]).reset_index(drop=True)
 
         if len(df) == 0:
             stats["empty_files"] += 1
@@ -352,7 +352,7 @@ class DataLoader:
         df[numeric_cols] = df[numeric_cols].ffill().bfill()
 
         # Remove rows with all NaN values in numeric columns
-        df = df.dropna(subset=numeric_cols, how="all").reset_index(drop=True)
+        df = df.fillna(0).dropna(subset=numeric_cols, how="all").reset_index(drop=True)
 
         if len(df) == 0:
             stats["empty_files"] += 1
@@ -389,7 +389,7 @@ class DataLoader:
                 filtered_df = df[available_features].copy()
 
                 # Only keep if we have some data
-                if len(filtered_df.dropna()) > 0:
+                if len(filtered_df.fillna(0).dropna()) > 0:
                     filtered_dfs.append(filtered_df)
                     filtered_classes.append(class_label)
 
