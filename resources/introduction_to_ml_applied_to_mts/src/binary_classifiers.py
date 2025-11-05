@@ -159,7 +159,7 @@ def create_binary_lstm_classifier(input_shape, lstm_units=128, dense_units=64, d
     return model
 
 
-def prepare_binary_data(X, y, target_class, balance_classes=True):
+def prepare_binary_data(X, y, target_class, balance_classes=True, samples_per_class=None):
     """
     Prepare data for binary classification (one vs all)
     
@@ -168,6 +168,7 @@ def prepare_binary_data(X, y, target_class, balance_classes=True):
     y (np.array): Class labels  
     target_class (int): Class to distinguish from all others
     balance_classes (bool): Whether to balance positive/negative classes
+    samples_per_class (int): Specific number of samples per class (if None, uses all available)
     
     Returns:
     X_binary (np.array): Same feature sequences
@@ -178,19 +179,53 @@ def prepare_binary_data(X, y, target_class, balance_classes=True):
     y_binary = (y == target_class).astype(int)
     
     if balance_classes:
-        # Balance classes by undersampling majority class
+        # Balance classes using undersampling and oversampling to meet exact requirements
         pos_indices = np.where(y_binary == 1)[0]
         neg_indices = np.where(y_binary == 0)[0]
         
         if len(pos_indices) > 0 and len(neg_indices) > 0:
-            # Use minimum of the two class sizes, but cap at reasonable number
-            min_size = min(len(pos_indices), len(neg_indices))
-            max_samples = min(min_size, 1000)  # Cap at 1000 samples per class
-            
-            # Randomly sample indices
-            np.random.seed(42)
-            selected_pos = np.random.choice(pos_indices, min(max_samples, len(pos_indices)), replace=False)
-            selected_neg = np.random.choice(neg_indices, min(max_samples, len(neg_indices)), replace=False)
+            if samples_per_class is not None:
+                # Use specific number of samples per class with under/oversampling
+                target_samples = samples_per_class
+                
+                print(f"   Requested: {target_samples} per class")
+                print(f"   Available: {len(pos_indices)} positive, {len(neg_indices)} negative")
+                
+                # Randomly sample indices with replacement if needed
+                np.random.seed(42)
+                
+                # Handle positive samples
+                if len(pos_indices) >= target_samples:
+                    # Undersample: we have enough, randomly select without replacement
+                    selected_pos = np.random.choice(pos_indices, target_samples, replace=False)
+                    pos_strategy = "undersampling"
+                else:
+                    # Oversample: we need more, randomly select with replacement
+                    selected_pos = np.random.choice(pos_indices, target_samples, replace=True)
+                    pos_strategy = "oversampling"
+                
+                # Handle negative samples
+                if len(neg_indices) >= target_samples:
+                    # Undersample: we have enough, randomly select without replacement
+                    selected_neg = np.random.choice(neg_indices, target_samples, replace=False)
+                    neg_strategy = "undersampling"
+                else:
+                    # Oversample: we need more, randomly select with replacement
+                    selected_neg = np.random.choice(neg_indices, target_samples, replace=True)
+                    neg_strategy = "oversampling"
+                
+                print(f"   Strategy: Positive ({pos_strategy}), Negative ({neg_strategy})")
+                print(f"   Final: {len(selected_pos)} positive, {len(selected_neg)} negative samples")
+                
+            else:
+                # Use minimum of the two class sizes, but cap at reasonable number
+                min_size = min(len(pos_indices), len(neg_indices))
+                max_samples = min(min_size, 1000)  # Cap at 1000 samples per class
+                
+                # Randomly sample indices without replacement (classic approach)
+                np.random.seed(42)
+                selected_pos = np.random.choice(pos_indices, max_samples, replace=False)
+                selected_neg = np.random.choice(neg_indices, max_samples, replace=False)
             
             # Combine indices
             selected_indices = np.concatenate([selected_pos, selected_neg])
@@ -358,7 +393,8 @@ def evaluate_binary_classifier(model, X_test, y_test, device='cpu'):
 
 
 def train_binary_classifiers(X_train, y_train, X_test, y_test, selected_classes, device='cpu', 
-                           epochs=50, batch_size=32, learning_rate=0.001, patience=10):
+                           epochs=50, batch_size=32, learning_rate=0.001, patience=10,
+                           train_samples_per_class=3000, val_samples_per_class=200):
     """
     Train binary classifiers for multiple classes using one-vs-all strategy with test set as validation
     
@@ -373,6 +409,8 @@ def train_binary_classifiers(X_train, y_train, X_test, y_test, selected_classes,
     batch_size: Batch size for training
     learning_rate: Learning rate for optimizer
     patience: Early stopping patience
+    train_samples_per_class: Number of samples per class for training (3000 each positive/negative)
+    val_samples_per_class: Number of samples per class for validation (200 each positive/negative)
     
     Returns:
     binary_classifiers: Dictionary of trained models
@@ -385,6 +423,8 @@ def train_binary_classifiers(X_train, y_train, X_test, y_test, selected_classes,
     
     print(f"🚀 TRAINING BINARY CLASSIFIERS - ONE VS ALL (PyTorch)")
     print(f"Using test set as validation for early stopping")
+    print(f"Training samples per class: {train_samples_per_class}")
+    print(f"Validation samples per class: {val_samples_per_class}")
     print(f"Using device: {device}")
     print("=" * 60)
     
@@ -394,14 +434,16 @@ def train_binary_classifiers(X_train, y_train, X_test, y_test, selected_classes,
         print("-" * 40)
         
         try:
-            # Prepare binary training data
+            # Prepare binary training data (balanced, 3000 samples each)
             X_train_binary, y_train_binary, train_indices = prepare_binary_data(
-                X_train, y_train, target_class, balance_classes=True
+                X_train, y_train, target_class, balance_classes=True,
+                samples_per_class=train_samples_per_class
             )
             
-            # Prepare binary validation data (test set)
+            # Prepare binary validation data (balanced, 200 samples each)
             X_val_binary, y_val_binary, val_indices = prepare_binary_data(
-                X_test, y_test, target_class, balance_classes=False
+                X_test, y_test, target_class, balance_classes=True,
+                samples_per_class=val_samples_per_class
             )
             
             print(f"Binary training data prepared:")
@@ -481,7 +523,8 @@ def train_binary_classifiers(X_train, y_train, X_test, y_test, selected_classes,
     return binary_classifiers, training_results, training_histories
 
 
-def evaluate_binary_classifiers(binary_classifiers, X_test, y_test, device='cpu'):
+def evaluate_binary_classifiers(binary_classifiers, X_test, y_test, device='cpu', 
+                              samples_per_class=200, balance_classes=True):
     """
     Evaluate all binary classifiers on test data
     
@@ -490,6 +533,8 @@ def evaluate_binary_classifiers(binary_classifiers, X_test, y_test, device='cpu'
     X_test: Test features
     y_test: Test labels
     device: Device to run evaluation on
+    samples_per_class: Number of samples per class for evaluation (200 each positive/negative)
+    balance_classes: Whether to balance the evaluation data
     
     Returns:
     evaluation_results: Dictionary of evaluation metrics for each classifier
@@ -497,6 +542,10 @@ def evaluate_binary_classifiers(binary_classifiers, X_test, y_test, device='cpu'
     evaluation_results = {}
     
     print("🔍 EVALUATING BINARY CLASSIFIERS ON TEST DATA (PyTorch)")
+    if balance_classes:
+        print(f"Using balanced evaluation with {samples_per_class} samples per class")
+    else:
+        print("Using all available test data (unbalanced)")
     print("=" * 60)
     
     if not binary_classifiers:
@@ -510,10 +559,16 @@ def evaluate_binary_classifiers(binary_classifiers, X_test, y_test, device='cpu'
         model = binary_classifiers[class_num]
         
         try:
-            # Prepare binary test data
-            X_test_binary, y_test_binary, test_indices = prepare_binary_data(
-                X_test, y_test, class_num, balance_classes=False
-            )
+            # Prepare binary test data (balanced or unbalanced based on parameters)
+            if balance_classes:
+                X_test_binary, y_test_binary, test_indices = prepare_binary_data(
+                    X_test, y_test, class_num, balance_classes=True,
+                    samples_per_class=samples_per_class
+                )
+            else:
+                X_test_binary, y_test_binary, test_indices = prepare_binary_data(
+                    X_test, y_test, class_num, balance_classes=False
+                )
             
             print(f"Test data prepared:")
             print(f"   • Total samples: {len(X_test_binary)}")
