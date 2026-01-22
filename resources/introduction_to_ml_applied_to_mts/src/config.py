@@ -28,7 +28,7 @@ SAMPLING_RATE = 5  # Range: 1-10, Sample every nth row (1 line each n)
 SAMPLING_METHOD = "uniform"  # Options: 'uniform', 'random'
 
 # Cross-validation settings
-N_FOLDS = 3  # Range: 2-10
+N_FOLDS = 5  # Range: 2-10
 CV_RANDOM_STATE = 42
 CV_VERBOSE = False  # Reduced verbosity
 FALLBACK_REAL_PROPORTION = (
@@ -36,11 +36,11 @@ FALLBACK_REAL_PROPORTION = (
 )
 
 # Time windowing settings
-WINDOW_SIZE = 300  # Range: 100-1000
+WINDOW_SIZE = 100  # Range: 100-1000
 WINDOW_STRIDE = (
     WINDOW_SIZE // 2
 )  # Range: 1 to WINDOW_SIZE, Overlapping windows (150), use WINDOW_SIZE for non-overlapping
-MIN_WINDOW_SIZE = 300  # Range: 50 to WINDOW_SIZE, Only keep full-size windows
+MIN_WINDOW_SIZE = 100  # Range: 50 to WINDOW_SIZE, Only keep full-size windows
 
 # Data analysis settings
 SAMPLE_ANALYSIS_MIN_SAMPLES = 50
@@ -61,7 +61,7 @@ PROCESSED_DATA_DIR = "processed_data"
 # Data Loading Configuration for Per-Fold Evaluation
 MAX_NORMAL_SAMPLES = 500  # Limit normal samples per fold for faster processing
 MAX_ANOMALY_SAMPLES = 200  # Limit anomaly samples per fold
-SELECTED_ANOMALY_CLASSES = [3, 4, 8]  # Target anomaly classes
+SELECTED_ANOMALY_CLASSES = [1, 2, 3, 4, 5, 6, 7, 8, 9]  # Target anomaly classes
 
 # Supervised Classification settings
 CLASSIFICATION_CONFIG = {
